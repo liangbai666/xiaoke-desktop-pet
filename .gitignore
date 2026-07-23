@@ -1,0 +1,19 @@
+# 密钥 / 临时文件
+.gh_token
+.repo_create.json
+*.log
+latest.yml
+
+# 依赖与构建产物（体积大，不入库）
+node_modules/
+dist/
+win-unpacked/
+
+# 本地发布脚本（内含 GitHub Token，切勿入库 / 切勿分享）
+publish.bat
+
+# 工作区内部
+.workbuddy/
+
+# 冗余的 base64 文本（图片已内嵌进 index.html）
+generated-images/*.b64.txt

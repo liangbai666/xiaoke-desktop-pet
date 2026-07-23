@@ -1,0 +1,51 @@
+{
+  "name": "xiaoke-desktop-pet",
+  "version": "4.0.0",
+  "description": "XiaoKe - a Conan-style desktop pet (Electron floating window)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "release": "electron-builder --publish=always"
+  },
+  "author": "XiaoKe",
+  "license": "MIT",
+  "dependencies": {
+    "electron-updater": "^6.3.4"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.xiaoke.desktoppet",
+    "productName": "小柯桌面萌宠",
+    "copyright": "Copyright (c) 2026",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "package.json"
+    ],
+    "extraResources": [
+      "tray-icon.png"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "小柯桌面萌宠-便携版.${ext}",
+      "requestExecutionLevel": "user"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "liangbai666",
+      "repo": "xiaoke-desktop-pet"
+    }
+  }
+}
