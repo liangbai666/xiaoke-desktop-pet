@@ -33,6 +33,20 @@ function createWindow() {
   // 加载本地 HTML
   win.loadFile(path.join(__dirname, 'index.html'));
 
+  // 确保窗口在屏幕可见区域内（防止上次关闭时位置跑偏导致只显示一半）
+  try {
+    const { screen } = require('electron');
+    const display = screen.getPrimaryDisplay().workArea;
+    const [wx, wy] = win.getPosition();
+    const [ww, wh] = win.getSize();
+    let nx = wx, ny = wy;
+    if (nx + ww < display.x + 80) nx = display.x + 40;          // 左边超出
+    if (nx > display.x + display.width - 80) nx = display.x + display.width - ww - 40; // 右边超出
+    if (ny + wh < display.y + 80) ny = display.y + 40;           // 上边超出（只显示一半的主因）
+    if (ny > display.y + display.height - 80) ny = display.y + display.height - wh - 40; // 下边超出
+    win.setPosition(Math.round(nx), Math.round(ny));
+  } catch (e) { /* 屏幕API不可用时忽略 */ }
+
   // 加载完成后切入浮窗模式
   win.webContents.on('did-finish-load', () => {
     win.webContents.executeJavaScript('document.body.classList.add("float")');

@@ -14,16 +14,16 @@
     --green:#7ec98a;
     --shadow:0 10px 30px rgba(60,40,20,.25);
   }
-  *{box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-app-region:no-drag;}
+  *{box-sizing:border-box; -webkit-user-select:none; user-select:none;}
   html,body{margin:0; height:100%; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
-    background:transparent; overflow:hidden;}
+    background:transparent; overflow:hidden; -webkit-app-region:drag;}
   body{display:flex; align-items:center; justify-content:center;}
 
   #app{
     position:relative; width:260px; height:340px; border-radius:20px; overflow:hidden;
     box-shadow:var(--shadow); background:linear-gradient(180deg,#87ceeb 0%,#b8e4f9 40%,#fff8e8 70%,#f5e6d3 100%);
     transition:width .35s ease, height .35s ease, border-radius .35s ease, background .6s ease;
-    cursor:default;
+    cursor:default; -webkit-app-region:no-drag;
   }
   #app.expanded{width:400px; height:580px; border-radius:22px;}
   #app.theme-sakura{background:linear-gradient(180deg,#ffd9e6 0%,#ffeef4 45%,#fff6ef 75%,#ffe3ec 100%)!important;}
