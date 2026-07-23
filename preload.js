@@ -8,4 +8,7 @@ contextBridge.exposeInMainWorld('petAPI', {
   setOpacity: (v) => ipcRenderer.send('set-opacity', v),
   resizeWindow: (expanded) => ipcRenderer.send('resize-window', expanded),
   onMouseLook: (cb) => ipcRenderer.on('mouse-look', (_e, d) => cb(d.nx, d.ny)),
+  walkTo: (target) => ipcRenderer.send('walk-to', target || {}),
+  onWalkStart: (cb) => ipcRenderer.on('walk-start', () => cb()),
+  onWalkEnd: (cb) => ipcRenderer.on('walk-end', () => cb()),
 });

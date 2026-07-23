@@ -28,23 +28,18 @@
   #app.expanded{width:400px; height:580px; border-radius:22px;}
 
   /* 宠物 */
-  #petWrap{position:absolute; left:50%; bottom:64px; transform:translateX(-50%); width:170px; height:200px;
+  #petWrap{position:absolute; left:50%; margin-left:-85px; bottom:64px; width:170px; height:200px;
     cursor:pointer; -webkit-app-region:no-drag; transition:transform .2s;}
-  #pet{width:100%; height:100%; object-fit:contain; image-rendering:auto; transition:transform .2s; pointer-events:none;}
-  #petWrap:active{transform:translateX(-50%) scale(.95);}
+  #pet{position:absolute; left:0; top:15px; width:170px; height:170px; image-rendering:auto; pointer-events:none;}
+  #petWrap:active{transform:scale(.95);}
   .bounce{animation:bounce .5s ease;}
-  @keyframes bounce{0%,100%{transform:translateX(-50%)}40%{transform:translateX(-50%) translateY(-22px)}70%{transform:translateX(-50%) translateY(-6px)}}
+  @keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-22px)}70%{transform:translateY(-6px)}}
   .shake{animation:shk .4s ease;}
-  @keyframes shk{0%,100%{transform:translateX(-50%)}25%{transform:translateX(-50%) rotate(-5deg)}75%{transform:translateX(-50%) rotate(5deg)}}
+  @keyframes shk{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
+  .walking{animation:walk .5s ease-in-out infinite;}
+  @keyframes walk{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}}
 
-  /* 眼神叠加层：透明可动瞳孔，跟随鼠标方向转动 */
-  #eyeLayer{position:absolute; left:0; top:15px; width:170px; height:170px; pointer-events:none; z-index:5;}
-  .eye{position:absolute; width:18px; height:18px; border-radius:50%; background:#fdfdff; overflow:hidden; transform:translate(-50%,-50%); box-shadow:0 0 0 1px rgba(40,30,20,.28); animation:blink 5s infinite;}
-  @keyframes blink{0%,93%,100%{transform:translate(-50%,-50%) scaleY(1)}96%{transform:translate(-50%,-50%) scaleY(.08)}}
-  .eye.l{left:42%; top:33%;}
-  .eye.r{left:57%; top:33%;}
-  .pupil{position:absolute; left:50%; top:50%; width:11px; height:12px; border-radius:50%; background:#23233a; transform:translate(-50%,-50%); transition:transform .08s ease-out;}
-  .pupil:after{content:''; position:absolute; left:2px; top:2px; width:3px; height:3px; border-radius:50%; background:#fff; opacity:.85;}
+  /* 眼神：瞳孔直接绘制在 canvas 人物图上，跟随鼠标方向转动（见 renderPet / drawEyes） */
 
   /* 装饰（帽子/领结） */
   #cosHat{position:absolute; left:50%; top:-6px; transform:translateX(-50%); width:96px; height:54px; display:none; pointer-events:none;}
@@ -149,11 +144,7 @@
   </div>
 
   <div id="petWrap">
-    <img id="pet" src="" alt="小柯">
-    <div id="eyeLayer">
-      <div class="eye l"><div class="pupil"></div></div>
-      <div class="eye r"><div class="pupil"></div></div>
-    </div>
+    <canvas id="pet" width="384" height="384"></canvas>
     <div id="cosHat"></div>
     <div id="cosBow"></div>
   </div>
@@ -317,7 +308,40 @@ function sndSad(){beep(300,0.18,'triangle');}
 function sndClick(){beep(520,0.05,'square',0.12);}
 
 /* ---------- 表情 ---------- */
-function setFace(f){ if(IMG[f]){ currentFace=f; $('#pet').src=IMG[f]; } }
+const PET_W=384, PET_H=384;
+const EYE={lx:0.323, ly:0.198, rx:0.591, ry:0.198, pr:0.058, om:0.045, hr:0.026};
+let imgCache={}, lookX=0, lookY=0, blinking=false;
+function preloadImages(cb){
+  const keys=Object.keys(IMG); let n=0;
+  if(!keys.length){ cb&&cb(); return; }
+  keys.forEach(k=>{ const im=new Image();
+    im.onload=()=>{ imgCache[k]=im; if(++n===keys.length) cb&&cb(); };
+    im.onerror=()=>{ if(++n===keys.length) cb&&cb(); };
+    im.src=IMG[k]; });
+}
+function setFace(f){ if(IMG[f]){ currentFace=f; renderPet(); } }
+function renderPet(){
+  const cv=$('#pet'); if(!cv) return; const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,PET_W,PET_H);
+  const im=imgCache[currentFace]||imgCache.normal; if(im) ctx.drawImage(im,0,0,PET_W,PET_H);
+  drawEyes(ctx);
+}
+function drawEyes(ctx){
+  const cxA=[EYE.lx,EYE.rx], cyA=[EYE.ly,EYE.ry];
+  if(currentFace==='sleep'||blinking){
+    ctx.strokeStyle='rgba(45,32,26,.85)'; ctx.lineWidth=4; ctx.lineCap='round';
+    for(let i=0;i<2;i++){ const cx=cxA[i]*PET_W, cy=cyA[i]*PET_H;
+      ctx.beginPath(); ctx.arc(cx, cy, 20, 0.12*Math.PI, 0.88*Math.PI); ctx.stroke(); }
+    return;
+  }
+  const PR=EYE.pr*PET_W, HR=EYE.hr*PET_W, OM=EYE.om*PET_W;
+  const px=lookX*OM, py=lookY*OM;
+  for(let i=0;i<2;i++){ const cx=cxA[i]*PET_W+px, cy=cyA[i]*PET_H+py;
+    ctx.beginPath(); ctx.arc(cx,cy,PR,0,Math.PI*2); ctx.fillStyle='#15151f'; ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle='rgba(150,160,210,.5)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx-PR*0.32, cy-PR*0.32, HR, 0, Math.PI*2); ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fill();
+  }
+}
 function autoFace(){
   if(sleeping){ setFace('sleep'); return; }
   const a=needAvg();
@@ -330,33 +354,53 @@ function autoFace(){
 
 /* ---------- 眼神跟随鼠标 ---------- */
 let lastLookMove=Date.now(), lastNx=0, lastNy=0, away=false;
-let emotion={lastWork:Date.now(), lastDrink:Date.now()};
+let emotion={lastWork:Date.now(), lastDrink:Date.now(), lastStretch:Date.now()};
 function updateEyes(nx,ny){
-  if(nx!==lastNx||ny!==lastNy){ lastLookMove=Date.now(); lastNx=nx; lastNy=ny; }
-  const dx=(nx*4).toFixed(1), dy=(ny*4).toFixed(1);
-  document.querySelectorAll('.pupil').forEach(p=>{
-    p.style.transform='translate(calc(-50% + '+dx+'px), calc(-50% + '+dy+'px))';
-  });
+  lookX=nx; lookY=ny;
+  if(nx!==lastNx||ny!==lastNy){ lastLookMove=Date.now(); lastNx=nx; lastNy=ny; renderPet(); }
 }
 function greetByHour(){
   const h=new Date().getHours();
-  if(h>=6&&h<9)  return '早安！新的一天，加油哦 ☀️';
+  if(h>=5&&h<7)   return '早安！新的一天，加油哦 ☀️';
+  if(h>=7&&h<9)   return '早上好呀，昨晚睡得好吗？';
+  if(h>=9&&h<11)  return '上午专心工作，但也要记得喝水哦 💧';
   if(h>=11&&h<13)return '中午啦，记得吃午饭~ 🍱';
+  if(h>=13&&h<15)return '午后午后，喝杯茶提提神 🍵';
+  if(h>=15&&h<18)return '下午好，离下班又近一步啦！';
   if(h>=18&&h<21)return '晚上好，今天也辛苦啦 🌆';
-  if(h>=21)      return '该休息了，晚安 🌙';
-  return '';
+  if(h>=21&&h<23)return '夜深了，忙完就早点休息吧 🌙';
+  return '这么晚了还在忙？注意休息，我陪着你呢 🌟';
 }
+const AWAY_TALKS   =['怎么不理我了…想你了 🥺','你去哪啦，我一个人好无聊','喂喂，看我一眼嘛','是不是把我忘啦~'];
+const BACK_TALKS   =['你来啦~ 我等好久了!','嘿嘿，你回来我就安心了','欢迎回来！又见面啦','咦，你去哪溜达了？'];
+const NEED_TALKS   =['我有点饿了…','陪我玩嘛~','该洗香香了','好想睡个觉觉','肚子咕咕叫了'];
+const RANDOM_TALKS =['今天天气真好~','案件就在身边，要保持警惕哦','やった！开心','好想出去玩呀','我也在努力破案哦','嘿嘿，偷偷看你看了一会儿','要是能喝杯牛奶就好了','笔记写完了吗？','你笑起来真好看','我们一起加油吧 💪','侦探的直觉告诉我，今天会有好事发生'];
+const STROLL_TALKS =['出去转转~','透透气～','散步散步，活动一下','去那边看看！','走走走，换个风景','溜达溜达~','换个位置守株待兔'];
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
 function tickEmotion(){
   if(document.querySelector('.modal.show') || $('#menu').classList.contains('show')) return;
   const now=Date.now();
-  if(now-lastLookMove > 60000){            // 鼠标久未移动 → 像“离开”
-    if(!away){ away=true; bubble('怎么不理我了…想你了 🥺'); }
+  if(now-lastLookMove > 60000){            // 鼠标久未移动 → 像"离开"
+    if(!away){ away=true; bubble(pick(AWAY_TALKS)); }
   } else if(away){
-    away=false; bubble('你来啦~ 我等好久了!');
+    away=false; bubble(pick(BACK_TALKS));
   }
   if(!away){
     if(now-emotion.lastWork > 45*60000){ emotion.lastWork=now; bubble('工作很久了，休息一下吧 ☕'); }
     else if(now-emotion.lastDrink > 90*60000){ emotion.lastDrink=now; bubble('该喝水了 💧'); }
+    else if(now-emotion.lastStretch > 120*60000){ emotion.lastStretch=now; bubble('盯屏幕好久啦，闭眼休息 20 秒 👀'); }
+  }
+}
+
+// 空闲时在屏幕上溜达散步
+function maybeStroll(){
+  if(sleeping||document.querySelector('.modal.show')||$('#menu').classList.contains('show')) return;
+  if(Date.now()-lastLookMove < 8000) return;   // 鼠标在动就不打扰
+  if(Math.random()<0.5 && window.petAPI && petAPI.walkTo){
+    petAPI.walkTo();
+    bubble(pick(STROLL_TALKS));
   }
 }
 
@@ -646,18 +690,27 @@ function init(){
   // 离线收益提示
   if(pendingIdle>0){ setTimeout(()=>toast('挂机查案 +'+pendingIdle+'金币'),800); }
   autoFace();
+  // 预加载所有表情图用于 canvas 绘制
+  preloadImages(()=> renderPet());
   // 眼神跟随 + 时间/待机情感交互
   if(window.petAPI&&petAPI.onMouseLook) petAPI.onMouseLook(updateEyes);
+  // 自动眨眼
+  setInterval(()=>{ if(blinking) return; blinking=true; renderPet(); setTimeout(()=>{ blinking=false; renderPet(); }, 130); }, 4200);
   const greet=greetByHour(); if(greet) setTimeout(()=>bubble(greet),600);
   setInterval(tickEmotion, 5000);
+  // 溜达：空闲时随机在屏幕上散步
+  if(window.petAPI&&petAPI.onWalkStart) petAPI.onWalkStart(()=>{ $('#petWrap').classList.add('walking'); });
+  if(window.petAPI&&petAPI.onWalkEnd) petAPI.onWalkEnd(()=>{ $('#petWrap').classList.remove('walking'); });
+  setInterval(maybeStroll, 22000);
   // 主循环：仅轻量计时，无 rAF 常驻
   setInterval(()=>{ state.needs.hunger=clamp(state.needs.hunger-0.03); state.needs.thirst=clamp(state.needs.thirst-0.04); state.needs.clean=clamp(state.needs.clean-0.02); state.needs.mood=clamp(state.needs.mood-0.015); if(!sleeping) state.needs.energy=clamp(state.needs.energy-0.01); updateUI(); save(); }, 20000);
   // 随机案件
   setInterval(()=>{ if(!caseAvail && !document.querySelector('.modal.show')) maybeCase(); }, 45000);
-  // 自主行为
+  // 自主行为（碎碎念 / 需求提示）
   setInterval(()=>{ if(sleeping||document.querySelector('.modal.show')||$('#menu').classList.contains('show')) return;
-    const a=needAvg(); if(a<40){ const msgs=['我有点饿了…','陪我玩嘛~','该洗香香了']; bubble(msgs[Math.floor(Math.random()*msgs.length)]); }
-    else if(Math.random()<0.3){ const msgs=['今天天气真好','案件就在身边','やった！']; bubble(msgs[Math.floor(Math.random()*msgs.length)]); }
+    const a=needAvg();
+    if(a<40){ bubble(pick(NEED_TALKS)); }
+    else if(Math.random()<0.5){ bubble(pick(RANDOM_TALKS)); }
   }, 30000);
   checkAch();
 }

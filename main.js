@@ -215,6 +215,47 @@ ipcMain.handle('get-auto-start', () => {
   return !!config.autoStart;
 });
 
+// 溜达：平滑移动窗口到目标位置（带轻微弹跳，像在走路）
+let walkTimer = null;
+ipcMain.on('walk-to', (_event, target) => {
+  if (!win) return;
+  if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
+  const display = screen.getPrimaryDisplay().workArea;
+  const [ww, wh] = win.getSize();
+  let tx, ty;
+  if (target && typeof target.x === 'number') {
+    tx = target.x; ty = target.y;
+  } else {
+    const margin = 40;
+    tx = display.x + margin + Math.random() * (display.width - ww - margin * 2);
+    ty = win.getPosition()[1]; // 保持当前高度，水平散步
+  }
+  const [sx, sy] = win.getPosition();
+  // 先夹到屏幕范围内
+  tx = Math.max(display.x + 10, Math.min(display.x + display.width - ww - 10, Math.round(tx)));
+  ty = Math.max(display.y + 10, Math.min(display.y + display.height - wh - 10, Math.round(ty)));
+  const dist = Math.abs(tx - sx) + Math.abs(ty - sy);
+  if (dist < 6) return; // 太近就不动
+  const speed = Math.max(4, dist / 55); // 像素/帧，约 1.3s 走完
+  let step = 0;
+  if (win.webContents) win.webContents.send('walk-start');
+  walkTimer = setInterval(() => {
+    const [cx, cy] = win.getPosition();
+    const dx = tx - cx, dy = ty - cy;
+    const d = Math.hypot(dx, dy);
+    if (d <= speed) {
+      win.setPosition(tx, ty);
+      clearInterval(walkTimer); walkTimer = null;
+      if (win.webContents) win.webContents.send('walk-end');
+      return;
+    }
+    const nx = cx + (dx / d) * speed;
+    const ny = cy + (dy / d) * speed + Math.sin(step * 0.5) * 2; // 走路起伏感
+    win.setPosition(Math.round(nx), Math.round(ny));
+    step++;
+  }, 24);
+});
+
 // ===== 退出 =====
 function quitApp() {
   app.isQuitting = true;
