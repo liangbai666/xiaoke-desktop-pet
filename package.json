@@ -1,7 +1,7 @@
 {
   "name": "xiaoke-desktop-pet",
-  "version": "4.0.1",
-  "description": "XiaoKe - a Conan-style desktop pet (Electron floating window)",
+  "version": "5.0.0",
+  "description": "XiaoKe - a Conan-style desktop pet (Electron floating window, v5 with mini-games, cases, cosmetics, auto-update)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -27,6 +27,7 @@
       "main.js",
       "preload.js",
       "index.html",
+      "images.js",
       "package.json"
     ],
     "extraResources": [

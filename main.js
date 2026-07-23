@@ -154,6 +154,12 @@ ipcMain.on('set-auto-start', (_event, enable) => {
   toggleAutoStart(enable);
 });
 
+ipcMain.on('set-opacity', (_event, v) => {
+  if (win && typeof v === 'number') {
+    try { win.setOpacity(Math.max(0.2, Math.min(1, v))); } catch (e) {}
+  }
+});
+
 ipcMain.handle('get-auto-start', () => {
   return !!config.autoStart;
 });

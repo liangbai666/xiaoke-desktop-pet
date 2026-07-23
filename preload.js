@@ -5,4 +5,5 @@ contextBridge.exposeInMainWorld('petAPI', {
   toggleVisibility: () => ipcRenderer.send('toggle-visibility'),
   setAutoStart: (enable) => ipcRenderer.send('set-auto-start', enable),
   getAutoStart: () => ipcRenderer.invoke('get-auto-start'),
+  setOpacity: (v) => ipcRenderer.send('set-opacity', v),
 });
