@@ -1,6 +1,6 @@
 {
   "name": "xiaoke-desktop-pet",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "XiaoKe - a Conan-style desktop pet (Electron floating window)",
   "main": "main.js",
   "scripts": {
@@ -30,7 +30,8 @@
       "package.json"
     ],
     "extraResources": [
-      "tray-icon.png"
+      "tray-icon.png",
+      "app-update.yml"
     ],
     "win": {
       "target": [
