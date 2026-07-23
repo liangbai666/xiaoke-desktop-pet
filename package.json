@@ -41,7 +41,7 @@
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "小柯桌面萌宠-便携版.${ext}",
+      "artifactName": "小柯桌面萌宠-便携版-${version}.${ext}",
       "requestExecutionLevel": "user"
     },
     "publish": {
