@@ -16,8 +16,8 @@ let pendingUpdateVersion = null; // 有更新待安装时记录版本号
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 240,
-    height: 320,
+    width: 280,
+    height: 360,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -172,6 +172,27 @@ ipcMain.on('set-opacity', (_event, v) => {
   if (win && typeof v === 'number') {
     try { win.setOpacity(Math.max(0.2, Math.min(1, v))); } catch (e) {}
   }
+});
+
+// 窗口自适应大小（展开/收起弹窗时调用）
+ipcMain.on('resize-window', (_event, expanded) => {
+  if (!win) return;
+  try {
+    if (expanded) {
+      win.setSize(440, 620);   // 展开状态：容纳 400×580 的 #app + 边距
+    } else {
+      win.setSize(280, 360);   // 收起状态：容纳 260×340 的 #app + 边距
+    }
+    // 调整后重新检查边界
+    const { screen } = require('electron');
+    const display = screen.getPrimaryDisplay().workArea;
+    const [wx, wy] = win.getPosition();
+    const [ww, wh] = win.getSize();
+    let nx = wx, ny = wy;
+    if (nx + ww > display.x + display.width) nx = display.x + display.width - ww - 10;
+    if (ny + wh > display.y + display.height) ny = display.y + display.height - wh - 10;
+    win.setPosition(Math.round(nx), Math.round(ny));
+  } catch (e) {}
 });
 
 ipcMain.handle('get-auto-start', () => {

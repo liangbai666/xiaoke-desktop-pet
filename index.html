@@ -585,10 +585,22 @@ function updateUI(){
 function afterAct(){ checkAch(); if(window.petAPI&&petAPI.notifyTitle) {/* noop */} save(); updateUI(); autoFace(); }
 
 /* ---------- 菜单/弹窗 ---------- */
-function showModal(id){ $('#'+id).classList.add('show'); $('#app').classList.add('expanded'); }
-function closeModal(id){ $('#'+id).classList.remove('show'); if(!document.querySelector('.modal.show')) $('#app').classList.remove('expanded'); }
-function hideMenu(){ $('#menu').classList.remove('show'); }
-function openMenu(){ $('#menu').classList.add('show'); $('#app').classList.add('expanded'); }
+function showModal(id){ $('#'+id).classList.add('show'); $('#app').classList.add('expanded'); if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(true); }
+function closeModal(id){
+  $('#'+id).classList.remove('show');
+  if(!document.querySelector('.modal.show')&&!$('#menu').classList.contains('show')){
+    $('#app').classList.remove('expanded');
+    if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(false);
+  }
+}
+function hideMenu(){
+  $('#menu').classList.remove('show');
+  if(!document.querySelector('.modal.show')){
+    $('#app').classList.remove('expanded');
+    if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(false);
+  }
+}
+function openMenu(){ $('#menu').classList.add('show'); $('#app').classList.add('expanded'); if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(true); }
 
 /* ---------- 初始化 ---------- */
 function init(){
