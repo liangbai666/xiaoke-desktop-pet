@@ -3,649 +3,325 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>小柯 · 桌面萌宠 v5</title>
+<title>小柯 · 桌面陪伴 v6</title>
 <style>
   :root{
-    --card:rgba(255,255,255,.86);
     --ink:#4a3728;
     --pink:#ff8a9a;
     --blue:#6aafe6;
     --gold:#f0c040;
-    --green:#7ec98a;
-    --shadow:0 10px 30px rgba(60,40,20,.25);
+    --shadow:0 8px 24px rgba(60,40,20,.22);
   }
   *{box-sizing:border-box; -webkit-user-select:none; user-select:none;}
   html,body{margin:0; height:100%; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
-    background:transparent; overflow:hidden; -webkit-app-region:drag;}
-  body{display:flex; align-items:center; justify-content:center;}
+    background:transparent; overflow:hidden;}
+  body{display:flex; align-items:flex-start; justify-content:center;}
+  #stage{position:relative; width:100%; height:100%; transform-origin:50% 0;}
 
-  #app{
-    position:relative; width:260px; height:340px; border-radius:20px; overflow:hidden;
-    box-shadow:var(--shadow); background:linear-gradient(180deg,#87ceeb 0%,#b8e4f9 40%,#fff8e8 70%,#f5e6d3 100%);
-    transition:width .35s ease, height .35s ease, border-radius .35s ease, background .6s ease;
-    cursor:default;
-    /* 不设 no-drag — 让背景区域可拖拽窗口；只有下面的交互子元素才 no-drag */
-  }
-  #app.expanded{width:400px; height:580px; border-radius:22px;}
-  #app.theme-sakura{background:linear-gradient(180deg,#ffd9e6 0%,#ffeef4 45%,#fff6ef 75%,#ffe3ec 100%)!important;}
-  #app.theme-night{background:linear-gradient(180deg,#141d33 0%,#27324f 40%,#33415e 65%,#46557a 100%)!important;}
-  #app.theme-office{background:linear-gradient(180deg,#3a2f28 0%,#5b4a3c 45%,#7a6450 72%,#9c8268 100%)!important;}
+  /* 人物（内联 SVG，透明背景，只显示角色本身） */
+  #petSvg{position:absolute; left:50%; top:34px; transform:translateX(-50%);
+    width:150px; height:180px; cursor:grab; transition:top .3s ease, width .3s ease, height .3s ease;
+    filter:drop-shadow(0 6px 10px rgba(0,0,0,.18));}
+  #petSvg:active{cursor:grabbing;}
+  @keyframes bob{0%,100%{top:34px}50%{top:30px}}
+  #petSvg{animation:bob 4s ease-in-out infinite;}
+  #app.expanded #petSvg{animation:none; top:14px; width:96px; height:120px;}
 
-  /* 太阳/月亮 */
-  .celest{position:absolute; width:54px; height:54px; border-radius:50%; top:18px; right:22px;
-    background:radial-gradient(circle at 35% 35%,#fff6c8,#ffd24a); box-shadow:0 0 26px #ffd24a99; transition:.6s;}
-  .celest.moon{background:radial-gradient(circle at 35% 35%,#fdfdff,#cfd6e8); box-shadow:0 0 22px #cfd6e899;}
-  .cloud{position:absolute; top:46px; left:-60px; width:90px; height:30px; background:rgba(255,255,255,.8);
-    border-radius:20px; filter:blur(1px); animation:drift 26s linear infinite;}
-  .cloud.c2{top:90px; transform:scale(.7); animation-duration:34s; animation-delay:-10s;}
-  @keyframes drift{from{left:-70px}to{left:280px}}
+  .eyeGroup{transform-box:fill-box; transform-origin:center; animation:blink 4.5s infinite;}
+  @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+  #petSvg.sleep .eyeGroup{animation:none; transform:scaleY(.06);}
 
-  /* 宠物 */
-  #petWrap{position:absolute; left:50%; bottom:64px; transform:translateX(-50%); width:170px; height:200px;
-    cursor:pointer; -webkit-app-region:no-drag; transition:transform .2s;}
-  #pet{width:100%; height:100%; object-fit:contain; image-rendering:auto; transition:transform .2s; pointer-events:none;}
-  #petWrap:active{transform:translateX(-50%) scale(.95);}
-  .bounce{animation:bounce .5s ease;}
-  @keyframes bounce{0%,100%{transform:translateX(-50%)}40%{transform:translateX(-50%) translateY(-22px)}70%{transform:translateX(-50%) translateY(-6px)}}
-  .shake{animation:shk .4s ease;}
-  @keyframes shk{0%,100%{transform:translateX(-50%)}25%{transform:translateX(-50%) rotate(-5deg)}75%{transform:translateX(-50%) rotate(5deg)}}
+  /* 气泡 */
+  #bubble{position:absolute; left:50%; top:2px; transform:translateX(-50%) translateY(-8px);
+    background:#fff; color:var(--ink); font-size:12px; line-height:1.35; padding:6px 11px; border-radius:14px;
+    box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:.25s; max-width:160px; text-align:center; z-index:20;}
+  #bubble.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  #bubble:after{content:''; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color:#fff;}
 
-  /* 装饰（帽子/领结） */
-  #cosHat{position:absolute; left:50%; top:-6px; transform:translateX(-50%); width:96px; height:54px; display:none; pointer-events:none;}
-  #cosHat.show{display:block;}
-  #cosHat:before{content:''; position:absolute; left:8px; top:20px; width:80px; height:30px; background:#3a2f28; border-radius:0 0 40px 40px;}
-  #cosHat:after{content:''; position:absolute; left:50%; top:2px; transform:translateX(-50%); width:42px; height:24px; background:#4a3a30; border-radius:50% 50% 8px 8px;}
-  #cosBow{position:absolute; left:50%; top:118px; transform:translateX(-50%); width:26px; height:18px; display:none; pointer-events:none;
-    background:var(--gold); clip-path:polygon(50% 0,100% 35%,100% 65%,50% 100%,0 65%,0 35%);}
-  #cosBow.show{display:block;}
+  .fx{position:absolute; font-size:20px; animation:rise 1.2s ease forwards; pointer-events:none; z-index:25;}
+  @keyframes rise{from{transform:translateY(0) scale(.8);opacity:1}to{transform:translateY(-60px) scale(1.2);opacity:0}}
 
-  /* 头顶状态条 */
-  #hud{position:absolute; top:8px; left:8px; right:8px; display:flex; gap:6px; align-items:center; font-size:11px; color:var(--ink);
-    -webkit-app-region:no-drag;}
-  .pill{background:var(--card); border-radius:12px; padding:2px 8px; box-shadow:0 2px 6px rgba(0,0,0,.12); display:flex; align-items:center; gap:3px;}
-  #moodbar{flex:1; height:7px; background:rgba(255,255,255,.7); border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.12);}
-  #moodfill{height:100%; width:80%; background:linear-gradient(90deg,#7ec98a,#ffd24a,#ff8a9a); transition:width .4s;}
-
-  /* 气泡/提示 */
-  #bubble{position:absolute; left:50%; top:6px; transform:translateX(-50%); background:#fff; color:var(--ink);
-    font-size:12px; padding:6px 12px; border-radius:14px; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:.3s; max-width:220px; text-align:center; z-index:20;}
-  #bubble.show{opacity:1; top:30px;}
-  #toast{position:absolute; left:50%; bottom:14px; transform:translateX(-50%) translateY(10px); background:rgba(40,30,20,.86); color:#fff;
-    font-size:12px; padding:6px 14px; border-radius:14px; opacity:0; transition:.3s; z-index:30;}
-  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
-  .fx{position:absolute; font-size:22px; animation:rise 1.2s ease forwards; pointer-events:none; z-index:25;}
-  @keyframes rise{from{transform:translateY(0);opacity:1}to{transform:translateY(-70px);opacity:0}}
-
-  /* 菜单 */
-  #menu{position:absolute; inset:0; display:none; z-index:40; align-items:center; justify-content:center;
-    background:rgba(20,15,10,.28); -webkit-app-region:no-drag;}
-  #menu.show{display:flex;}
-  #menuPanel{background:var(--card); border-radius:20px; padding:16px; width:300px; box-shadow:var(--shadow);
-    display:grid; grid-template-columns:repeat(4,1fr); gap:10px; -webkit-app-region:no-drag;}
-  .mbtn{display:flex; flex-direction:column; align-items:center; gap:3px; background:#fff; border:none; border-radius:14px;
-    padding:8px 4px; cursor:pointer; font-size:11px; color:var(--ink); box-shadow:0 2px 6px rgba(0,0,0,.08); transition:transform .12s;
-    -webkit-app-region:no-drag;}
+  /* 展开面板（菜单 / 设置） */
+  #panelWrap{position:absolute; left:10px; right:10px; top:150px; display:none; z-index:30;}
+  #app.expanded #panelWrap{display:block;}
+  .pp{display:none;}
+  .pp.show{display:block;}
+  .card{background:rgba(255,255,255,.94); border-radius:18px; padding:14px; box-shadow:var(--shadow);}
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .mbtn{display:flex; flex-direction:column; align-items:center; gap:4px; background:#fff; border:none;
+    border-radius:14px; padding:11px 6px; cursor:pointer; font-size:12px; color:var(--ink);
+    box-shadow:0 2px 6px rgba(0,0,0,.08); transition:transform .12s; -webkit-app-region:no-drag;}
   .mbtn:hover{transform:translateY(-3px);}
-  .mbtn .ic{font-size:22px;}
-  .mbtn.alert{animation:pulse 1.1s infinite;}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 #ff8a9a88}50%{box-shadow:0 0 0 6px #ff8a9a00}}
-
-  /* 弹窗 */
-  .modal{position:absolute; inset:0; display:none; z-index:50; align-items:center; justify-content:center;
-    background:rgba(20,15,10,.35); -webkit-app-region:no-drag;}
-  .modal.show{display:flex;}
-  .panel{background:var(--card); border-radius:20px; padding:14px; width:330px; max-height:520px; overflow:auto; box-shadow:var(--shadow);
-    -webkit-app-region:no-drag;}
-  .panel h3{margin:2px 0 10px; font-size:15px; color:var(--ink); display:flex; justify-content:space-between; align-items:center;}
-  .panel .x{cursor:pointer; font-size:20px; color:#fff; background:var(--pink); border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
-    -webkit-app-region:no-drag; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,.15);}
-  .tabs{display:flex; gap:6px; margin-bottom:8px; -webkit-app-region:no-drag;}
-  .tab{flex:1; text-align:center; font-size:12px; padding:6px; border-radius:10px; background:rgba(0,0,0,.05); cursor:pointer; color:var(--ink);
-    -webkit-app-region:no-drag;}
-  .tab.on{background:var(--blue); color:#fff;}
-  .item{display:flex; align-items:center; gap:8px; background:#fff; border-radius:12px; padding:8px 10px; margin-bottom:7px; box-shadow:0 2px 5px rgba(0,0,0,.06);
-    -webkit-app-region:no-drag;}
-  .item .emo{font-size:22px;}
-  .item .nm{flex:1; font-size:12px; color:var(--ink);}
-  .item .nm small{display:block; color:#a98; font-size:10px;}
-  .item button{border:none; background:var(--gold); color:#5a4500; border-radius:10px; padding:5px 9px; font-size:11px; cursor:pointer;
-    -webkit-app-region:no-drag;}
-  .item button:disabled{background:#ddd; color:#999; cursor:default;}
-  .item.equip button{background:var(--green); color:#fff;}
-  .row{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:12px; color:var(--ink); -webkit-app-region:no-drag;}
-  .row input[type=range]{flex:1; -webkit-app-region:no-drag;}
-  .ach{display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:10px; background:#fff; margin-bottom:6px; font-size:12px; box-shadow:0 2px 5px rgba(0,0,0,.05);
-    -webkit-app-region:no-drag;}
-  .ach .badge{font-size:18px;}
-  .ach.done{outline:2px solid var(--green);}
-  .ach.locked{opacity:.5;}
-  .progress{height:6px; background:rgba(0,0,0,.1); border-radius:6px; overflow:hidden; flex:1;}
-  .progress>div{height:100%; background:var(--green); width:0; transition:.4s;}
-  .claim{background:var(--pink); color:#fff; border:none; border-radius:10px; padding:5px 10px; font-size:11px; cursor:pointer;
-    -webkit-app-region:no-drag;}
-  .claim:disabled{background:#ccc;}
-
-  /* 迷你游戏 */
-  #gameGrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0;}
-  .card{aspect-ratio:1; background:linear-gradient(135deg,#cfe8ff,#a9d4f5); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:26px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.1); transition:transform .1s; color:transparent;
-    -webkit-app-region:no-drag;}
-  .card.flip{color:#fff; background:linear-gradient(135deg,#ffd6e0,#ffb3c6); transform:scale(1.05);}
-  .card.matched{background:linear-gradient(135deg,#bfeacb,#9bd9ad); color:#fff; cursor:default;}
-  .case-opt{display:block; width:100%; text-align:left; margin:6px 0; padding:9px 12px; border:none; border-radius:12px; background:#fff; box-shadow:0 2px 5px rgba(0,0,0,.06); cursor:pointer; font-size:12px; color:var(--ink);
-    -webkit-app-region:no-drag;}
-  .case-opt:hover{background:#fff4f7;}
-  .timer{font-size:12px; color:#a98; text-align:center; margin-bottom:6px;}
-  .bigbtn{display:block; width:100%; margin:6px 0; padding:11px; border:none; border-radius:14px; background:var(--blue); color:#fff; font-size:13px; cursor:pointer;
-    -webkit-app-region:no-drag;}
+  .mbtn .ic{font-size:24px;}
+  .row{display:flex; align-items:center; gap:8px; margin:10px 0; font-size:12px; color:var(--ink); -webkit-app-region:no-drag;}
+  .row input[type=range]{flex:1;}
+  .row label{flex:1;}
+  .bigbtn{display:block; width:100%; margin:6px 0; padding:10px; border:none; border-radius:14px;
+    background:var(--blue); color:#fff; font-size:13px; cursor:pointer; -webkit-app-region:no-drag;}
   .bigbtn.alt{background:var(--gold); color:#5a4500;}
-  #shareCanvas{width:100%; border-radius:14px; background:#fff; display:block; margin:6px 0;
-    -webkit-app-region:no-drag;}
-  .hint{font-size:11px; color:#a98; text-align:center; margin-top:4px;}
-  #caseBtnPos{position:absolute; right:8px; bottom:64px; z-index:35;}
+  .bigbtn.ghost{background:rgba(0,0,0,.06); color:var(--ink);}
+  .hint{font-size:11px; color:#a98; text-align:center; margin-top:6px;}
+  .x{position:absolute; top:8px; right:8px; cursor:pointer; font-size:18px; color:#fff; background:var(--pink);
+    border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+    font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,.15); -webkit-app-region:no-drag;}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="celest" id="celest"></div>
-  <div class="cloud"></div>
-  <div class="cloud c2"></div>
+  <div id="stage">
+    <!-- 纯人物 SVG（柯南 Q 版），无背景 -->
+    <svg id="petSvg" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- 后发 -->
+      <path d="M48 100 Q50 42 100 40 Q150 42 152 100 Q160 130 148 158 L52 158 Q40 130 48 100 Z" fill="#2b2b3a"/>
+      <!-- 脸 -->
+      <ellipse cx="100" cy="102" rx="50" ry="48" fill="#ffe0c2"/>
+      <!-- 刘海 -->
+      <path d="M52 96 Q55 52 100 50 Q145 52 148 96 Q138 74 120 70 Q128 84 118 88 Q108 66 100 72 Q92 62 84 74 Q72 70 80 88 Q66 82 60 96 Q56 100 52 96 Z" fill="#2b2b3a"/>
+      <!-- 呆毛 -->
+      <path d="M100 50 Q98 30 110 24 Q103 38 100 50 Z" fill="#2b2b3a"/>
+      <!-- 眼镜 -->
+      <g stroke="#3a3a4a" stroke-width="3" fill="rgba(255,255,255,0.12)">
+        <circle cx="80" cy="100" r="17"/>
+        <circle cx="120" cy="100" r="17"/>
+        <line x1="97" y1="100" x2="103" y2="100"/>
+      </g>
+      <!-- 眼睛（含瞳孔，瞳孔随鼠标移动） -->
+      <g class="eyeGroup" id="egL">
+        <ellipse cx="80" cy="100" rx="12" ry="14" fill="#fff"/>
+        <g id="pupilL"><circle cx="80" cy="102" r="6.5" fill="#23233a"/><circle cx="82.5" cy="98.5" r="2" fill="#fff"/></g>
+      </g>
+      <g class="eyeGroup" id="egR">
+        <ellipse cx="120" cy="100" rx="12" ry="14" fill="#fff"/>
+        <g id="pupilR"><circle cx="120" cy="102" r="6.5" fill="#23233a"/><circle cx="122.5" cy="98.5" r="2" fill="#fff"/></g>
+      </g>
+      <!-- 眉毛 -->
+      <path id="browL" d="M66 80 Q80 76 94 80" stroke="#2b2b3a" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path id="browR" d="M106 80 Q120 76 134 80" stroke="#2b2b3a" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- 腮红 -->
+      <ellipse id="blushL" cx="64" cy="120" rx="9" ry="5" fill="#ff9aa8" opacity="0"/>
+      <ellipse id="blushR" cx="136" cy="120" rx="9" ry="5" fill="#ff9aa8" opacity="0"/>
+      <!-- 嘴 -->
+      <path id="mouth" d="M88 124 Q100 134 112 124" stroke="#b5654a" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- 身体（蓝西装 + 白衬衫 + 红领带） -->
+      <path d="M60 152 Q100 140 140 152 L152 240 L48 240 Z" fill="#2b3a67"/>
+      <path d="M88 152 L100 178 L112 152 Z" fill="#fff"/>
+      <path d="M100 154 L93 163 L100 206 L107 163 Z" fill="#d23b3b"/>
+      <path d="M60 160 Q42 184 50 212" stroke="#2b3a67" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M140 160 Q158 184 150 212" stroke="#2b3a67" stroke-width="14" fill="none" stroke-linecap="round"/>
+    </svg>
 
-  <div id="hud">
-    <span class="pill">🪙<b id="coins">0</b></span>
-    <span class="pill">🕵️Lv<b id="lvl">1</b></span>
-    <div id="moodbar"><div id="moodfill"></div></div>
-  </div>
+    <div id="bubble"></div>
 
-  <div id="petWrap">
-    <img id="pet" src="" alt="小柯">
-    <div id="cosHat"></div>
-    <div id="cosBow"></div>
-  </div>
+    <!-- 面板：菜单 / 设置（展开时显示） -->
+    <div id="panelWrap">
+      <div id="menuPanel" class="pp card show">
+        <div class="grid">
+          <button class="mbtn" onclick="doPet()"><span class="ic">🤚</span>摸摸</button>
+          <button class="mbtn" onclick="doWater()"><span class="ic">💧</span>喂水</button>
+          <button class="mbtn" onclick="openSettings()"><span class="ic">⚙️</span>设置</button>
+          <button class="mbtn" onclick="hidePet()"><span class="ic">👋</span>收起</button>
+        </div>
+        <p class="hint">拖动小柯可移动 · 双击隐藏</p>
+      </div>
 
-  <div id="bubble"></div>
-  <div id="toast"></div>
-
-  <!-- 菜单 -->
-  <div id="menu">
-    <div id="menuPanel">
-      <button class="mbtn" onclick="doPet()"><span class="ic">🤚</span>摸摸</button>
-      <button class="mbtn" onclick="openShop('food')"><span class="ic">🍙</span>喂食</button>
-      <button class="mbtn" onclick="openShop('drink')"><span class="ic">🥤</span>喝水</button>
-      <button class="mbtn" onclick="openShop('toy')"><span class="ic">🎾</span>玩耍</button>
-      <button class="mbtn" onclick="doBath()"><span class="ic">🛁</span>洗澡</button>
-      <button class="mbtn" onclick="doSleep()"><span class="ic">😴</span>睡觉</button>
-      <button class="mbtn" id="workBtn" onclick="openWork()"><span class="ic">💼</span>打工</button>
-      <button class="mbtn" onclick="openShop('cos')"><span class="ic">👗</span>装扮</button>
-      <button class="mbtn" onclick="openTasks()"><span class="ic">📜</span>任务</button>
-      <button class="mbtn" onclick="openSettings()"><span class="ic">⚙️</span>设置</button>
-      <button class="mbtn" onclick="openShare()"><span class="ic">📸</span>分享</button>
-      <button class="mbtn" onclick="hideMenu()"><span class="ic">❌</span>收起</button>
+      <div id="setPanel" class="pp card">
+        <span class="x" onclick="backMenu()">×</span>
+        <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink)">⚙️ 设置</h3>
+        <div class="row"><label>透明度</label><input type="range" id="setOp" min="40" max="100" value="100" oninput="applyOpacity(this.value)"></div>
+        <div class="row"><label>大小</label><input type="range" id="setScale" min="70" max="140" value="100" oninput="applyScale(this.value)"></div>
+        <div class="row"><label>🔊 音效</label><input type="checkbox" id="setMute" onchange="toggleMute(this.checked)"></div>
+        <div class="row"><label>🚀 开机自启</label><input type="checkbox" id="setAuto" onchange="toggleAuto(this.checked)"></div>
+        <button class="bigbtn ghost" onclick="hidePet()">👋 隐藏到托盘</button>
+        <p class="hint">v6.0 · 纯人物陪伴 · 眼神随鼠标 · 按时提醒</p>
+      </div>
     </div>
   </div>
-
-  <!-- 商店/装扮 -->
-  <div class="modal" id="shopModal"><div class="panel">
-    <h3>🛍️ 商店 <span class="x" onclick="closeModal('shopModal')">×</span></h3>
-    <div class="tabs" id="shopTabs">
-      <div class="tab on" data-c="food" onclick="shopTab('food')">食物</div>
-      <div class="tab" data-c="drink" onclick="shopTab('drink')">饮品</div>
-      <div class="tab" data-c="toy" onclick="shopTab('toy')">玩具</div>
-      <div class="tab" data-c="cos" onclick="shopTab('cos')">装扮</div>
-    </div>
-    <div id="shopList"></div>
-  </div></div>
-
-  <!-- 打工迷你游戏 -->
-  <div class="modal" id="gameModal"><div class="panel">
-    <h3>💼 打工赚金币 <span class="x" onclick="closeModal('gameModal')">×</span></h3>
-    <div id="gameHome">
-      <button class="bigbtn" onclick="startMemory()">🃏 记忆翻牌（眼力）</button>
-      <button class="bigbtn alt" onclick="startQuiz()">🔍 限时推理（脑力）</button>
-      <p class="hint">破案有功！完成小游戏获得金币与经验</p>
-    </div>
-    <div id="gamePlay" style="display:none"></div>
-  </div></div>
-
-  <!-- 案件 -->
-  <div class="modal" id="caseModal"><div class="panel">
-    <h3>🚨 案件 <span class="x" onclick="closeModal('caseModal')">×</span></h3>
-    <div id="caseBody"></div>
-  </div></div>
-
-  <!-- 任务/成就 -->
-  <div class="modal" id="taskModal"><div class="panel">
-    <h3>📜 任务与成就 <span class="x" onclick="closeModal('taskModal')">×</span></h3>
-    <div class="tabs">
-      <div class="tab on" onclick="taskTab('daily')">每日任务</div>
-      <div class="tab" onclick="taskTab('ach')">成就墙</div>
-    </div>
-    <div id="taskList"></div>
-  </div></div>
-
-  <!-- 设置 -->
-  <div class="modal" id="setModal"><div class="panel">
-    <h3>⚙️ 设置 <span class="x" onclick="closeModal('setModal')">×</span></h3>
-    <div class="row">透明度 <input type="range" id="setOp" min="40" max="100" value="100" oninput="applyOpacity(this.value)"></div>
-    <div class="row">大小 <input type="range" id="setScale" min="70" max="140" value="100" oninput="applyScale(this.value)"></div>
-    <div class="row">🔊 音效 <input type="checkbox" id="setMute" onchange="toggleMute(this.checked)"></div>
-    <div class="row">🚀 开机自启 <input type="checkbox" id="setAuto" onchange="toggleAuto(this.checked)"></div>
-    <button class="bigbtn alt" onclick="resetSave()" style="margin-top:10px">🗑️ 重置存档</button>
-    <p class="hint">v5.0 · 闲时几乎零占用，仅在互动/动画时运行</p>
-  </div></div>
-
-  <!-- 分享卡 -->
-  <div class="modal" id="shareModal"><div class="panel">
-    <h3>📸 分享状态卡 <span class="x" onclick="closeModal('shareModal')">×</span></h3>
-    <canvas id="shareCanvas" width="340" height="440"></canvas>
-    <button class="bigbtn" onclick="saveCard()">💾 保存图片</button>
-    <p class="hint">保存到下载/桌面后发给朋友，炫耀你的小柯！</p>
-  </div></div>
 </div>
 
-<script src="images.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
-const IMG = window.IMG || {};
-const SAVE_KEY = 'xiaoke_v5';
+const SAVE_KEY = 'xiaoke_v6';
+const svg = $('#petSvg');
 
-/* ---------- 数据 ---------- */
-const COS = {
-  bowGold:{name:'金边领结', price:80, type:'bow', unlockLv:2, desc:'闪亮的金色领结'},
-  hat:    {name:'侦探帽',   price:120, type:'hat', unlockLv:3, desc:'小小侦探帽'},
-  bgSakura:{name:'樱花小屋', price:150, type:'bg', val:'sakura', unlockLv:4, desc:'粉色樱花背景'},
-  bgNight: {name:'星空书房', price:150, type:'bg', val:'night',  unlockLv:5, desc:'深夜书房背景'},
-  bgOffice:{name:'侦探事务所',price:200, type:'bg', val:'office', unlockLv:6, desc:'复古事务所背景'}
-};
-const ITEMS = {
-  food:[{n:'饭团',p:10,emo:'🍙',h:30},{n:'蛋糕',p:25,emo:'🍰',h:55,m:10},{n:'寿司',p:40,emo:'🍣',h:70,m:15}],
-  drink:[{n:'清水',p:8,emo:'💧',t:30},{n:'果汁',p:20,emo:'🧃',t:55,m:8},{n:'奶茶',p:35,emo:'🧋',t:70,m:12}],
-  toy:[{n:'足球',p:15,emo:'⚽',m:25,e:-10},{n:'望远镜',p:30,emo:'🔭',m:45,e:-15},{n:'拼图',p:50,emo:'🧩',m:60,e:-20}]
-};
-const ACHV = [
-  {id:'lv5', n:'见习侦探', d:'达到 5 级', icon:'🥉', test:s=>s.level>=5},
-  {id:'lv10',n:'名侦探',   d:'达到 10 级',icon:'🥇', test:s=>s.level>=10},
-  {id:'rich',n:'小富翁',   d:'持有 300 金币',icon:'💰', test:s=>s.coins>=300},
-  {id:'case5',n:'初露锋芒', d:'破获 5 案', icon:'🔍', test:s=>s.cases>=5},
-  {id:'case20',n:'案件终结者',d:'破获 20 案', icon:'🏆', test:s=>s.cases>=20},
-  {id:'love',n:'爱心大使', d:'抚摸 50 次', icon:'💗', test:s=>s.stats.pet>=50},
-  {id:'work',n:'打工达人', d:'打工 10 次', icon:'💼', test:s=>s.stats.work>=10},
-  {id:'dress',n:'时尚教主', d:'同时装备 2 件装饰', icon:'👗', test:s=>Object.values(s.equipped).filter(Boolean).length>=2},
-  {id:'streak',n:'七日之约', d:'连续登录 7 天', icon:'📅', test:s=>s.streak>=7}
-];
-const QUIZ = [
-  {q:'昨晚豪门千金珠宝失窃，门锁完好无损。最可能是？', o:['外部贼人破窗','内部人员用钥匙','Ghost作案'], a:1},
-  {q:'现场只有受害者的脚印，凶手如何离开？', o:['倒着走伪装','根本没离开房间','坐直升机'], a:0},
-  {q:'毒药在红茶里，但杯柄朝向异常。说明？', o:['左撇子下毒','茶是冷的','杯子很贵'], a:0},
-  {q:'监控显示门禁卡在案发时刷卡，卡主却在睡觉。', o:['卡被复制','他在梦游','卡会自己动'], a:0}
-];
-const CASES = [
-  {q:'公园长椅上有人喊「我的钱包不见了！」小柯你说先做什么？', o:['立刻报警','查看长椅下和被风吹走的草丛','假装没听见'], a:1, r:'细心的小柯在草丛里找到了钱包！'},
-  {q:'图书馆一本珍本书失踪，管理员很着急。', o:['检查借阅记录','怪管理员','烧了图书馆'], a:0, r:'借阅记录指向了真正的借书人！'},
-  {q:'邻居说夜里听到怪声。小柯判断？', o:['有盗贼','是水管热胀冷缩','外星人'], a:1, r:'虚惊一场，但小柯很靠谱！'}
-];
-
-let state, pendingIdle=0, sleeping=false, currentFace='normal', caseAvail=false;
-
-/* ---------- 存档 ---------- */
+/* ---------- 存档（仅设置 + 亲密度） ---------- */
 function defaultState(){
-  return {
-    needs:{hunger:80,thirst:80,clean:80,mood:80,energy:80},
-    coins:50, xp:0, level:1, last:Date.now(), cases:0,
-    equipped:{hat:false,bow:false,bg:'day'},
-    owned:{}, ach:{}, daily:null, streak:0, lastDay:'',
-    personality:{affection:0,diligent:0},
-    settings:{opacity:100,scale:100,mute:false,autostart:true},
-    stats:{pet:0,feed:0,drink:0,play:0,bath:0,work:0,case:0}
-  };
+  return { affection:0, settings:{opacity:100,scale:100,mute:false,autostart:true}, lastSeen:Date.now() };
 }
 function load(){
-  try{ const r=JSON.parse(localStorage.getItem(SAVE_KEY)); if(r&&r.needs) return Object.assign(defaultState(),r); }catch(e){}
+  try{ const r=JSON.parse(localStorage.getItem(SAVE_KEY)); if(r&&r.settings) return Object.assign(defaultState(),r); }catch(e){}
   return defaultState();
 }
-function save(){ state.last=Date.now(); localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+let state = load();
 
-/* ---------- 工具 ---------- */
-function clamp(v){return Math.max(0,Math.min(100,v));}
-function needAvg(){return (state.needs.hunger+state.needs.thirst+state.needs.clean+state.needs.mood+state.needs.energy)/5;}
-function toast(m){const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),1500);}
-function bubble(m){const b=$('#bubble'); b.textContent=m; b.classList.add('show'); clearTimeout(bubble._t); bubble._t=setTimeout(()=>b.classList.remove('show'),2400);}
-function fx(e){const f=document.createElement('div'); f.className='fx'; f.textContent=e; f.style.left=(40+Math.random()*90)+'px'; f.style.bottom='120px'; $('#app').appendChild(f); setTimeout(()=>f.remove(),1200);}
-function bounce(){const w=$('#petWrap'); w.classList.remove('bounce'); void w.offsetWidth; w.classList.add('bounce');}
-function shake(){const w=$('#petWrap'); w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake');}
-function addXP(n){ state.xp+=n; const nl=Math.floor(Math.sqrt(state.xp/50))+1; if(nl>state.level){ state.level=nl; bubble('升级啦！Lv'+nl); sndHappy(); } }
-
-/* ---------- 音效 (Web Audio, 无需文件) ---------- */
+/* ---------- 音效 ---------- */
 let actx=null;
-function beep(freq,dur,type,vol){ if(state.settings.mute)return; try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const o=actx.createOscillator(),g=actx.createGain(); o.type=type||'sine'; o.frequency.value=freq; g.gain.value=vol||0.18; o.connect(g); g.connect(actx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+(dur||0.08)); o.stop(actx.currentTime+(dur||0.08)); }catch(e){} }
-function sndCoin(){beep(880,0.07); setTimeout(()=>beep(1320,0.09),70);}
+function beep(freq,dur,type,vol){
+  if(state.settings.mute) return;
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq; g.gain.value=vol||0.18;
+    o.connect(g); g.connect(actx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+(dur||0.08));
+    o.stop(actx.currentTime+(dur||0.08));
+  }catch(e){}
+}
 function sndHappy(){beep(660,0.08); setTimeout(()=>beep(990,0.1),80);}
-function sndSad(){beep(300,0.18,'triangle');}
 function sndClick(){beep(520,0.05,'square',0.12);}
 
 /* ---------- 表情 ---------- */
-function setFace(f){ if(IMG[f]){ currentFace=f; $('#pet').src=IMG[f]; } }
-function autoFace(){
-  if(sleeping){ setFace('sleep'); return; }
-  const a=needAvg();
-  if(state.needs.energy<25){ setFace('sleep'); }
-  else if(a<35){ setFace('sad'); }
-  else if(state.needs.mood<30){ setFace('cry'); }
-  else if(a>78){ setFace('superHappy'); }
-  else { setFace('happy'); }
+function setExpression(n){
+  const mouth=$('#mouth'), bl=$('#blushL'), br=$('#blushR'), bL=$('#browL'), bR=$('#browR');
+  bl.setAttribute('opacity',0); br.setAttribute('opacity',0);
+  bL.setAttribute('d','M66 80 Q80 76 94 80'); bR.setAttribute('d','M106 80 Q120 76 134 80');
+  if(n==='happy'){ mouth.setAttribute('d','M82 122 Q100 144 118 122'); mouth.setAttribute('fill','#b5654a'); mouth.setAttribute('stroke','none'); bl.setAttribute('opacity',.9); br.setAttribute('opacity',.9); }
+  else if(n==='love'){ mouth.setAttribute('d','M92 128 Q100 136 108 128'); mouth.setAttribute('fill','#b5654a'); mouth.setAttribute('stroke','none'); bl.setAttribute('opacity',1); br.setAttribute('opacity',1); }
+  else if(n==='sad'){ mouth.setAttribute('d','M86 130 Q100 118 114 130'); mouth.setAttribute('stroke','#b5654a'); mouth.setAttribute('fill','none'); bL.setAttribute('d','M66 82 Q80 86 94 82'); bR.setAttribute('d','M106 82 Q120 86 134 82'); }
+  else if(n==='worried'){ mouth.setAttribute('d','M88 126 H112'); mouth.setAttribute('stroke','#b5654a'); mouth.setAttribute('fill','none'); bL.setAttribute('d','M66 78 Q80 74 94 82'); bR.setAttribute('d','M106 82 Q120 74 134 78'); }
+  else if(n==='sleep'){ mouth.setAttribute('d','M92 128 Q100 132 108 128'); mouth.setAttribute('stroke','#b5654a'); mouth.setAttribute('fill','none'); }
+  else { mouth.setAttribute('d','M88 124 Q100 134 112 124'); mouth.setAttribute('stroke','#b5654a'); mouth.setAttribute('fill','none'); }
+  svg.classList.toggle('sleep', n==='sleep');
 }
 
-/* ---------- 离线结算 + 挂机收益 ---------- */
-function settle(){
-  const now=Date.now(), dt=(now-state.last)/60000;
-  if(dt>1){
-    const r={hunger:dt*0.04, thirst:dt*0.06, clean:dt*0.035, mood:dt*0.025, energy:dt*0.02};
-    for(const k in r) state.needs[k]=clamp(state.needs[k]-r[k]);
-    const hrs=Math.min(dt/60,8);
-    if(state.needs.energy>20){ const earn=Math.floor(hrs*4); if(earn>0){ state.coins+=earn; pendingIdle=earn; } }
+/* ---------- 气泡 / 特效 ---------- */
+let lastBubble=0, expTimer=null;
+function say(msg, exp, force){
+  const now=Date.now();
+  if(!force && now-lastBubble < 12000) return;
+  lastBubble=now;
+  const b=$('#bubble'); b.textContent=msg; b.classList.add('show');
+  clearTimeout(say._t); say._t=setTimeout(()=>b.classList.remove('show'), 3400);
+  if(exp){ setExpression(exp); clearTimeout(expTimer); expTimer=setTimeout(()=>setExpression('normal'), 3200); }
+}
+function fx(e){ const f=document.createElement('div'); f.className='fx'; f.textContent=e;
+  f.style.left=(55+Math.random()*40)+'px'; f.style.top='120px'; $('#stage').appendChild(f);
+  setTimeout(()=>f.remove(),1200); }
+
+/* ---------- 眼神跟随鼠标 ---------- */
+const MAX=4.6; // 瞳孔最大偏移（viewBox 单位）
+function movePupils(ux,uy){
+  if(expanded || svg.classList.contains('sleep')) return;
+  $('#pupilL').setAttribute('transform', `translate(${(ux*MAX).toFixed(2)} ${(uy*MAX).toFixed(2)})`);
+  $('#pupilR').setAttribute('transform', `translate(${(ux*MAX).toFixed(2)} ${(uy*MAX).toFixed(2)})`);
+}
+if(window.petAPI && petAPI.onMouseLook){
+  petAPI.onMouseLook((ux,uy,mx,my)=>{ movePupils(ux,uy); trackActivity(mx,my); });
+}
+
+/* ---------- 时间 + 待机 情感调度 ---------- */
+let lastMx=null, lastMy=null, lastMove=Date.now();
+let sessionStart=Date.now(), waterBase=Date.now();
+let idleSaid=false, idleLongSaid=false, workSaid=false;
+let lastHour=new Date().getHours();
+let expanded=false;
+
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function timeGreeting(h){
+  if(h>=5&&h<10)  return '早安！新的一天开始啦 ☀️';
+  if(h>=10&&h<12) return '上午好呀，加油！';
+  if(h>=12&&h<14) return '中午啦，记得吃饭哦 🍱';
+  if(h>=14&&h<18) return '下午好，一起努力！';
+  if(h>=18&&h<21) return '晚上好，今天辛苦了 🌆';
+  if(h>=21&&h<24) return '夜深了，别太累~';
+  return '这么晚还不睡？早点休息哦 😴';
+}
+function trackActivity(mx,my){
+  const moved = (mx!==lastMx || my!==lastMy);
+  lastMx=mx; lastMy=my;
+  if(moved){
+    if(idleSaid){ // 刚回到电脑前
+      idleSaid=false; idleLongSaid=false; sessionStart=Date.now(); waterBase=Date.now(); workSaid=false;
+      say('你来啦~ 我等你好久了','happy',true);
+    }
+    lastMove=Date.now();
   }
-  state.last=now;
 }
-
-/* ---------- 每日任务 ---------- */
-function todayStr(){ return new Date().toISOString().slice(0,10); }
-function genDaily(){
-  return { date:todayStr(), done:false, claimed:false,
-    t:[ {id:'pet',label:'摸摸小柯 3 次',target:3,prog:0},
-        {id:'work',label:'打工 1 次',target:1,prog:0},
-        {id:'feed',label:'喂食 2 次',target:2,prog:0},
-        {id:'case',label:'破案 1 次',target:1,prog:0} ] };
-}
-function tickDaily(kind){
-  if(!state.daily||state.daily.date!==todayStr()){ state.daily=genDaily(); }
-  const t=state.daily.t.find(x=>x.id===kind); if(t&&t.prog<t.target){ t.prog++; }
-  if(state.daily.t.every(x=>x.prog>=x.target)&&!state.daily.done){ state.daily.done=true; bubble('每日任务完成！可领奖'); }
-  save();
-}
-
-/* ---------- 成就 ---------- */
-function checkAch(){
-  ACHV.forEach(a=>{ if(!state.ach[a.id] && a.test(state)){ state.ach[a.id]=true; toast('🏅 成就：'+a.n); sndHappy(); } });
+function tickEmotional(){
+  if(expanded) return;
+  const now=Date.now();
+  const idle = now - lastMove;
+  if(idle > 8000){
+    if(!idleSaid){ idleSaid=true; workSaid=false; waterBase=now;
+      say(pick(['怎么不理我了…想你了 💭','你去忙什么啦？记得回来陪我~','一个人好孤单…想你了']),'love'); }
+    else if(idle > 20*60000 && !idleLongSaid){ idleLongSaid=true; say('我都等你好久了，快回来嘛 🥺','sad'); }
+  } else {
+    const work = now - sessionStart;
+    if(work > 45*60000 && !workSaid){ workSaid=true; say('工作很久了，休息一下吧 ☕','worried'); }
+    else if(now - waterBase > 90*60000){ waterBase=now; say('该喝水了 💧 喝点水再继续','normal'); }
+    else if(idle < 3000 && Math.random()<0.05){ say(pick(['今天也要元气满满哦','陪我坐会儿嘛','やった！','有你在真好~']),'happy'); }
+  }
+  // 整点问候
+  const h=new Date().getHours();
+  if(h!==lastHour){ lastHour=h; say(timeGreeting(h),'normal',true); }
 }
 
 /* ---------- 交互 ---------- */
 function doPet(){
-  state.needs.mood=clamp(state.needs.mood+6); state.needs.energy=clamp(state.needs.energy+2);
-  state.personality.affection++; state.stats.pet++; addXP(2);
-  setFace('happy'); bounce(); fx('💗'); sndHappy();
-  const lines=['嘿嘿~','また会えたね','よしよし','最喜欢你了~'];
-  if(Math.random()<0.5) bubble(lines[Math.floor(Math.random()*lines.length)]);
-  tickDaily('pet'); afterAct();
+  state.affection++; save();
+  setExpression('happy'); fx('💗'); sndHappy();
+  const lines=['嘿嘿~','最喜欢你了','よしよし','摸摸头最舒服了'];
+  if(Math.random()<0.6) say(pick(lines),'happy');
 }
-function buyAndApply(cat, it){
-  if(state.coins<it.p){ toast('金币不够'); sndSad(); return; }
-  state.coins-=it.p;
-  if(cat==='food'){ state.needs.hunger=clamp(state.needs.hunger+(it.h||0)); state.needs.mood=clamp(state.needs.mood+(it.m||0)); state.stats.feed++; tickDaily('feed'); setFace('eat'); fx('🍴'); }
-  if(cat==='drink'){ state.needs.thirst=clamp(state.needs.thirst+(it.t||0)); state.needs.mood=clamp(state.needs.mood+(it.m||0)); state.stats.drink++; setFace('drink'); fx('💧'); }
-  if(cat==='toy'){ state.needs.mood=clamp(state.needs.mood+(it.m||0)); state.needs.energy=clamp(state.needs.energy+(it.e||0)); state.stats.play++; setFace('play'); fx(it.emo); }
-  sndCoin(); addXP(1); renderShop(); afterAct();
+function doWater(){
+  waterBase=Date.now();
+  setExpression('happy'); fx('💧'); sndHappy();
+  say('咕噜咕噜~ 喝水真舒服','happy');
 }
-function doBath(){ state.needs.clean=clamp(state.needs.clean+45); state.needs.mood=clamp(state.needs.mood+5); state.stats.bath++; setFace('bath'); fx('🫧'); sndHappy(); bubble('泡泡浴~'); afterAct(); }
-function doSleep(){
-  sleeping=true; setFace('sleep'); fx('💤'); bubble('Zzz...'); sndClick();
-  setTimeout(()=>{ sleeping=false; state.needs.energy=clamp(state.needs.energy+40); state.needs.mood=clamp(state.needs.mood+5); autoFace(); toast('精神满满！'); }, 2600);
-  afterAct();
-}
-function openWork(){ hideMenu(); if(caseAvail){ openCaseUI(); return; } $('#gameHome').style.display=''; $('#gamePlay').style.display='none'; showModal('gameModal'); }
+function hidePet(){ if(window.petAPI&&petAPI.hideWindow) petAPI.hideWindow(); }
 
-/* ---------- 商店 ---------- */
-let shopCat='food';
-function openShop(cat){ hideMenu(); shopCat=cat||'food'; shopTab(shopCat); showModal('shopModal'); }
-function shopTab(c){ shopCat=c; document.querySelectorAll('#shopTabs .tab').forEach(t=>t.classList.toggle('on', t.dataset.c===c)); renderShop(); }
-function renderShop(){
-  const box=$('#shopList'); box.innerHTML='';
-  if(shopCat==='cos'){
-    Object.keys(COS).forEach(k=>{
-      const c=COS[k]; const owned=state.owned&&state.owned[k];
-      const eq = c.type==='bg' ? (state.equipped.bg===c.val) : !!state.equipped[k];
-      const locked=state.level<c.unlockLv;
-      const div=document.createElement('div'); div.className='item'+(eq?' equip':'');
-      div.innerHTML=`<span class="emo">${c.type==='bg'?'🏠':c.type==='hat'?'🎩':'👔'}</span>
-        <span class="nm">${c.name} <small>${c.desc} · ${locked?'Lv'+c.unlockLv+'解锁':(owned?'已拥有':'💰'+c.price)}</small></span>`;
-      const b=document.createElement('button');
-      if(locked){ b.textContent='🔒'; b.disabled=true; }
-      else if(!owned){ b.textContent='买'; b.onclick=()=>{ if(state.coins<c.price){toast('金币不够');sndSad();return;} state.coins-=c.price; state.owned=state.owned||{}; state.owned[k]=true; sndCoin(); renderShop(); afterAct(); }; }
-      else { b.textContent=eq?'卸下':'装备'; b.onclick=()=>{
-        if(c.type==='bg'){ state.equipped.bg = eq ? 'day' : c.val; }
-        else { state.equipped[k]=!eq; }
-        applyCos(); sndClick(); renderShop(); afterAct(); }; }
-      div.appendChild(b); box.appendChild(div);
-    });
-    return;
-  }
-  ITEMS[shopCat].forEach(it=>{
-    const div=document.createElement('div'); div.className='item';
-    div.innerHTML=`<span class="emo">${it.emo}</span><span class="nm">${it.n} <small>💰${it.p}</small></span>`;
-    const b=document.createElement('button'); b.textContent='买'; b.onclick=()=>buyAndApply(shopCat,it);
-    div.appendChild(b); box.appendChild(div);
-  });
+/* ---------- 面板 ---------- */
+function openPanel(which){
+  expanded=true;
+  $('#app').classList.add('expanded');
+  $('#menuPanel').classList.toggle('show', which==='menu');
+  $('#setPanel').classList.toggle('show', which==='settings');
+  if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(true);
 }
-function applyCos(){
-  $('#cosHat').classList.toggle('show', !!state.equipped.hat);
-  $('#cosBow').classList.toggle('show', !!state.equipped.bow);
-  const bg=state.equipped.bg||'day';
-  $('#app').classList.remove('theme-sakura','theme-night','theme-office');
-  if(bg!=='day') $('#app').classList.add('theme-'+bg);
-  save();
+function closePanel(){
+  expanded=false;
+  $('#app').classList.remove('expanded');
+  $('#menuPanel').classList.remove('show'); $('#setPanel').classList.remove('show');
+  if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(false);
 }
-
-/* ---------- 迷你游戏：记忆翻牌 ---------- */
-let mem=null;
-function startMemory(){
-  $('#gameHome').style.display='none'; $('#gamePlay').style.display='';
-  const pool=['🔍','🕵️','📖','💡','🔑','🧩'];
-  let deck=pool.concat(pool).map((e,i)=>({e,i})).sort(()=>Math.random()-0.5);
-  mem={deck, flip:[], matched:0, lock:false, time:30, timer:null};
-  const g=$('#gamePlay'); g.innerHTML='<div class="timer" id="memTime">⏱ 30s</div><div id="gameGrid"></div>';
-  const grid=$('#gameGrid');
-  deck.forEach((c,idx)=>{
-    const el=document.createElement('div'); el.className='card'; el.dataset.i=idx; el.textContent=c.e;
-    el.onclick=()=>memClick(idx,el); grid.appendChild(el);
-  });
-  mem.timer=setInterval(()=>{ mem.time--; const t=$('#memTime'); if(t)t.textContent='⏱ '+mem.time+'s';
-    if(mem.time<=0) endMemory(false); },1000);
-}
-function memClick(idx,el){
-  if(mem.lock||el.classList.contains('matched')||el.classList.contains('flip')) return;
-  el.classList.add('flip'); mem.flip.push({idx,el});
-  sndClick();
-  if(mem.flip.length===2){
-    mem.lock=true;
-    const [a,b]=mem.flip;
-    if(mem.deck[a.idx].e===mem.deck[b.idx].e){ a.el.classList.add('matched'); b.el.classList.add('matched'); mem.matched++; mem.flip=[]; mem.lock=false; sndCoin(); if(mem.matched===6) endMemory(true); }
-    else { setTimeout(()=>{ a.el.classList.remove('flip'); b.el.classList.remove('flip'); mem.flip=[]; mem.lock=false; },650); }
-  }
-}
-function endMemory(win){
-  clearInterval(mem.timer);
-  const reward= win? 40+mem.time : 8;
-  state.coins+=reward; state.stats.work++; state.personality.diligent++; addXP(6); tickDaily('work');
-  const g=$('#gamePlay'); g.innerHTML=`<h3 style="text-align:center">${win?'🎉 全配对！':'⏰ 时间到'}</h3>
-    <p class="hint" style="text-align:center">获得 🪙${reward} · 经验+6</p>
-    <button class="bigbtn" onclick="startMemory()">再来一局</button>
-    <button class="bigbtn alt" onclick="backGameHome()">返回</button>`;
-  sndCoin(); afterAct();
-}
-
-/* ---------- 迷你游戏：限时推理 ---------- */
-let quiz=null;
-function startQuiz(){
-  $('#gameHome').style.display='none'; $('#gamePlay').style.display='';
-  const q=QUIZ[Math.floor(Math.random()*QUIZ.length)];
-  quiz={q, time:20, timer:null, done:false};
-  const g=$('#gamePlay');
-  g.innerHTML=`<div class="timer" id="qzTime">⏱ 20s</div><p style="font-size:12px;color:var(--ink)">${q.q}</p>`;
-  q.o.forEach((opt,i)=>{ const b=document.createElement('button'); b.className='case-opt'; b.textContent=opt; b.onclick=()=>ansQuiz(i,b); g.appendChild(b); });
-  quiz.timer=setInterval(()=>{ quiz.time--; const t=$('#qzTime'); if(t)t.textContent='⏱ '+quiz.time+'s'; if(quiz.time<=0) ansQuiz(-1,null); },1000);
-}
-function ansQuiz(i,el){
-  if(quiz.done) return; quiz.done=true; clearInterval(quiz.timer);
-  const correct=i===quiz.q.a;
-  const reward= correct? 30 : 5;
-  state.coins+=reward; state.stats.work++; state.personality.diligent++; addXP(correct?8:2); tickDaily('work');
-  document.querySelectorAll('#gamePlay .case-opt').forEach(b=>b.disabled=true);
-  const g=$('#gamePlay');
-  g.insertAdjacentHTML('beforeend', `<p class="hint" style="text-align:center;color:${correct?'#3a9':'#c66'}">${correct?'✅ 推理正确！':'❌ 答错了'} 获得 🪙${reward}</p>
-    <button class="bigbtn" onclick="startQuiz()">再来一题</button>
-    <button class="bigbtn alt" onclick="backGameHome()">返回</button>`);
-  if(correct) sndCoin(); else sndSad();
-  afterAct();
-}
-function backGameHome(){ $('#gameHome').style.display=''; $('#gamePlay').style.display='none'; }
-
-/* ---------- 案件彩蛋 ---------- */
-function maybeCase(){
-  if(caseAvail) return;
-  if(Math.random()<0.5){ caseAvail=true; $('#workBtn').classList.add('alert'); bubble('事件です！点「打工」破案'); }
-}
-function openCaseUI(){
-  const c=CASES[Math.floor(Math.random()*CASES.length)];
-  window._curCase=c;
-  const body=$('#caseBody');
-  body.innerHTML=`<p style="font-size:12px;color:var(--ink)">${c.q}</p>`;
-  c.o.forEach((opt,i)=>{ const b=document.createElement('button'); b.className='case-opt'; b.textContent=opt; b.onclick=()=>ansCase(i); body.appendChild(b); });
-  showModal('caseModal'); bubble('');
-}
-function ansCase(i){
-  const c=window._curCase; const correct=i===c.a;
-  if(correct){ state.coins+=25; state.cases++; state.stats.case++; state.personality.diligent++; addXP(10); tickDaily('case'); sndCoin(); toast('🕵️ 破案！+25金币'); }
-  else { sndSad(); toast('线索断了…再接再厉'); }
-  caseAvail=false; $('#workBtn').classList.remove('alert');
-  $('#caseBody').insertAdjacentHTML('beforeend', `<p class="hint" style="text-align:center;color:${correct?'#3a9':'#c66'}">${correct?c.r:'再观察一下吧'}</p>`);
-  document.querySelectorAll('#caseBody .case-opt').forEach(b=>b.disabled=true);
-  afterAct();
-}
-
-/* ---------- 任务面板 ---------- */
-function openTasks(){ hideMenu(); taskTab('daily'); showModal('taskModal'); }
-function taskTab(k){
-  document.querySelectorAll('#taskModal .tab').forEach(t=>t.classList.toggle('on', t.textContent.includes(k==='daily'?'每日':'成就')));
-  const box=$('#taskList'); box.innerHTML='';
-  if(k==='daily'){
-    if(!state.daily||state.daily.date!==todayStr()) state.daily=genDaily();
-    state.daily.t.forEach(t=>{
-      const d=document.createElement('div'); d.className='ach'+(t.prog>=t.target?' done':'');
-      d.innerHTML=`<span class="badge">${t.prog>=t.target?'✅':'📌'}</span><span style="flex:1;font-size:12px">${t.label}</span>
-        <div class="progress"><div style="width:${Math.min(100,t.prog/t.target*100)}%"></div></div>`;
-      box.appendChild(d);
-    });
-    const claim=document.createElement('button'); claim.className='claim'; claim.textContent= state.daily.done?(state.daily.claimed?'已领取 ✅':'领取奖励 🪙60'):'未达成';
-    claim.disabled=!(state.daily.done&&!state.daily.claimed);
-    claim.onclick=()=>{ if(state.daily.done&&!state.daily.claimed){ state.coins+=60; state.daily.claimed=true; sndCoin(); toast('领取 +60 金币'); renderTasksRefresh(); } };
-    box.appendChild(claim);
-  } else {
-    ACHV.forEach(a=>{ const ok=!!state.ach[a.id]; const d=document.createElement('div'); d.className='ach '+(ok?'done':'locked');
-      d.innerHTML=`<span class="badge">${ok?a.icon:'🔒'}</span><span style="flex:1;font-size:12px">${a.n}<br><small style="color:#a98">${a.d}</small></span>`;
-      box.appendChild(d); });
-  }
-}
-function renderTasksRefresh(){ taskTab('daily'); }
-
-/* ---------- 设置 ---------- */
-function openSettings(){ hideMenu(); $('#setOp').value=state.settings.opacity; $('#setScale').value=state.settings.scale; $('#setMute').checked=state.settings.mute; if(window.petAPI&&petAPI.getAutoStart) petAPI.getAutoStart().then(v=>{state.settings.autostart=v; $('#setAuto').checked=v;}); else $('#setAuto').checked=state.settings.autostart; showModal('setModal'); }
-function applyOpacity(v){ state.settings.opacity=+v; if(window.petAPI&&petAPI.setOpacity) petAPI.setOpacity(+v/100); $('#app').style.opacity=1; save(); }
-function applyScale(v){ state.settings.scale=+v; $('#app').style.transform='scale('+(+v/100)+')'; save(); }
+function toggleMenu(){ if(expanded) closePanel(); else openPanel('menu'); }
+function openSettings(){ $('#setOp').value=state.settings.opacity; $('#setScale').value=state.settings.scale; $('#setMute').checked=state.settings.mute;
+  if(window.petAPI&&petAPI.getAutoStart) petAPI.getAutoStart().then(v=>{state.settings.autostart=v; $('#setAuto').checked=v;});
+  else $('#setAuto').checked=state.settings.autostart; openPanel('settings'); }
+function backMenu(){ openPanel('menu'); }
+function applyOpacity(v){ state.settings.opacity=+v; if(window.petAPI&&petAPI.setOpacity) petAPI.setOpacity(+v/100); save(); }
+function applyScale(v){ state.settings.scale=+v; $('#stage').style.transform='scale('+(+v/100)+')'; save(); }
 function toggleMute(c){ state.settings.mute=c; if(!c) sndClick(); save(); }
 function toggleAuto(c){ state.settings.autostart=c; if(window.petAPI&&petAPI.setAutoStart) petAPI.setAutoStart(c); save(); }
-function resetSave(){ if(confirm('确定清空所有进度？')){ localStorage.removeItem(SAVE_KEY); location.reload(); } }
 
-/* ---------- 分享卡 ---------- */
-function openShare(){ hideMenu(); drawCard(); showModal('shareModal'); }
-function drawCard(){
-  const cv=$('#shareCanvas'), x=cv.getContext('2d');
-  const grd=x.createLinearGradient(0,0,0,440); grd.addColorStop(0,'#87ceeb'); grd.addColorStop(1,'#fff8e8');
-  x.fillStyle=grd; x.fillRect(0,0,340,440);
-  x.fillStyle='#4a3728'; x.font='bold 22px sans-serif'; x.textAlign='center';
-  x.fillText('🕵️ 我的桌面萌宠 · 小柯',170,38);
-  const img=new Image(); img.onload=()=>{ x.drawImage(img,90,55,160,190); };
-  img.src=IMG[currentFace]||IMG.normal;
-  x.font='16px sans-serif';
-  x.fillText('等级 Lv'+state.level+'   金币 🪙'+state.coins,170,290);
-  x.fillText('破案 '+state.cases+' 起   成就 '+Object.keys(state.ach).length+' 枚',170,316);
-  const tra= state.personality.affection>state.personality.diligent?'黏人型':'认真型';
-  x.fillText('性格：'+tra+'   心情 '+Math.round(needAvg())+'%',170,342);
-  x.font='13px sans-serif'; x.fillStyle='#a98';
-  x.fillText('—— 来自《小柯桌面萌宠 v5》——',170,400);
-}
-function saveCard(){ const cv=$('#shareCanvas'); const a=document.createElement('a'); a.download='小柯状态卡.png'; a.href=cv.toDataURL('image/png'); a.click(); toast('已保存图片'); }
-
-/* ---------- UI 刷新 ---------- */
-function updateUI(){
-  $('#coins').textContent=state.coins;
-  $('#lvl').textContent=state.level;
-  $('#moodfill').style.width=needAvg()+'%';
-  const h=$('#celest'); const hr=new Date().getHours(); const night=hr<6||hr>=18;
-  h.classList.toggle('moon',night);
-}
-function afterAct(){ checkAch(); if(window.petAPI&&petAPI.notifyTitle) {/* noop */} save(); updateUI(); autoFace(); }
-
-/* ---------- 菜单/弹窗 ---------- */
-function showModal(id){ $('#'+id).classList.add('show'); $('#app').classList.add('expanded'); if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(true); }
-function closeModal(id){
-  $('#'+id).classList.remove('show');
-  if(!document.querySelector('.modal.show')&&!$('#menu').classList.contains('show')){
-    $('#app').classList.remove('expanded');
-    if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(false);
-  }
-}
-function hideMenu(){
-  $('#menu').classList.remove('show');
-  if(!document.querySelector('.modal.show')){
-    $('#app').classList.remove('expanded');
-    if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(false);
-  }
-}
-function openMenu(){ $('#menu').classList.add('show'); $('#app').classList.add('expanded'); if(window.petAPI&&petAPI.resizeWindow) petAPI.resizeWindow(true); }
+/* ---------- 拖拽 + 点击 ---------- */
+let dragInfo=null, suppressClick=false;
+svg.addEventListener('mousedown', e=>{ dragInfo={x:e.clientX,y:e.clientY,t:Date.now()}; if(window.petAPI&&petAPI.dragStart) petAPI.dragStart(); });
+window.addEventListener('mouseup', e=>{
+  if(!dragInfo) return;
+  if(window.petAPI&&petAPI.dragEnd) petAPI.dragEnd();
+  const moved=Math.hypot(e.clientX-dragInfo.x, e.clientY-dragInfo.y);
+  const dt=Date.now()-dragInfo.t;
+  const wasDrag = moved>=6 || dt>=400;
+  if(!wasDrag && !suppressClick){ toggleMenu(); }
+  suppressClick=false; dragInfo=null;
+});
+svg.addEventListener('dblclick', ()=>{ suppressClick=true; if(window.petAPI&&petAPI.toggleVisibility) petAPI.toggleVisibility(); });
 
 /* ---------- 初始化 ---------- */
 function init(){
-  state=load(); settle();
-  applyCos();
-  $('#app').style.transform='scale('+(state.settings.scale/100)+')';
+  $('#stage').style.transform='scale('+(state.settings.scale/100)+')';
   if(window.petAPI&&petAPI.setOpacity) petAPI.setOpacity((state.settings.opacity||100)/100);
-  $('#petWrap').addEventListener('click', ()=>{ if($('#menu').classList.contains('show')) hideMenu(); else openMenu(); });
-  $('#petWrap').addEventListener('dblclick', ()=>{ if(window.petAPI&&petAPI.toggleVisibility) petAPI.toggleVisibility(); });
-  document.querySelectorAll('.modal').forEach(m=> m.addEventListener('click',e=>{ if(e.target===m) closeModal(m.id); }));
-  // ESC 键关闭弹窗/菜单
-  document.addEventListener('keydown', e=>{
-    if(e.key==='Escape'){
-      const openModal=document.querySelector('.modal.show');
-      if(openModal){ closeModal(openModal.id); sndClick(); }
-      else if($('#menu').classList.contains('show')){ hideMenu(); sndClick(); }
-    }
-  });
-  // 连续登录
-  const t=todayStr();
-  if(state.lastDay!==t){ if(state.lastDay && daysBetween(state.lastDay,t)===1) state.streak++; else state.streak=1; state.lastDay=t; }
-  updateUI();
-  // 离线收益提示
-  if(pendingIdle>0){ setTimeout(()=>toast('挂机查案 +'+pendingIdle+'金币'),800); }
-  autoFace();
-  // 主循环：仅轻量计时，无 rAF 常驻
-  setInterval(()=>{ state.needs.hunger=clamp(state.needs.hunger-0.03); state.needs.thirst=clamp(state.needs.thirst-0.04); state.needs.clean=clamp(state.needs.clean-0.02); state.needs.mood=clamp(state.needs.mood-0.015); if(!sleeping) state.needs.energy=clamp(state.needs.energy-0.01); updateUI(); save(); }, 20000);
-  // 随机案件
-  setInterval(()=>{ if(!caseAvail && !document.querySelector('.modal.show')) maybeCase(); }, 45000);
-  // 自主行为
-  setInterval(()=>{ if(sleeping||document.querySelector('.modal.show')||$('#menu').classList.contains('show')) return;
-    const a=needAvg(); if(a<40){ const msgs=['我有点饿了…','陪我玩嘛~','该洗香香了']; bubble(msgs[Math.floor(Math.random()*msgs.length)]); }
-    else if(Math.random()<0.3){ const msgs=['今天天气真好','案件就在身边','やった！']; bubble(msgs[Math.floor(Math.random()*msgs.length)]); }
-  }, 30000);
-  checkAch();
+  setExpression('normal');
+  setTimeout(()=>say(timeGreeting(new Date().getHours()),'normal',true), 900);
+  setInterval(tickEmotional, 5000);
 }
-function daysBetween(a,b){ const d=(new Date(b)-new Date(a))/86400000; return Math.round(d); }
-
-window.doPet=doPet; window.openShop=openShop; window.doBath=doBath; window.doSleep=doSleep;
-window.openWork=openWork; window.openTasks=openTasks; window.openSettings=openSettings; window.openShare=openShare;
-window.hideMenu=hideMenu; window.shopTab=shopTab; window.startMemory=startMemory; window.startQuiz=startQuiz;
-window.backGameHome=backGameHome; window.taskTab=taskTab; window.closeModal=closeModal;
-window.applyOpacity=applyOpacity; window.applyScale=applyScale; window.toggleMute=toggleMute; window.toggleAuto=toggleAuto;
-window.resetSave=resetSave; window.saveCard=saveCard; window.ansCase=ansCase;
 init();
+
+window.doPet=doPet; window.doWater=doWater; window.hidePet=hidePet;
+window.openSettings=openSettings; window.backMenu=backMenu; window.toggleMenu=toggleMenu;
+window.applyOpacity=applyOpacity; window.applyScale=applyScale; window.toggleMute=toggleMute; window.toggleAuto=toggleAuto;
 </script>
 </body>
 </html>

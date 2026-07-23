@@ -1,7 +1,7 @@
 {
   "name": "xiaoke-desktop-pet",
-  "version": "5.0.3",
-  "description": "XiaoKe - a Conan-style desktop pet (Electron floating window, v5 with mini-games, cases, cosmetics, auto-update)",
+  "version": "6.0.0",
+  "description": "小柯桌面萌宠 v6 - 纯人物陪伴型桌面宠物：透明无背景、眼神随鼠标、按时间与待机进行情感交互",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

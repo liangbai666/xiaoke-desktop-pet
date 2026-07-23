@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -16,8 +16,8 @@ let pendingUpdateVersion = null; // 有更新待安装时记录版本号
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 280,
-    height: 360,
+    width: 170,
+    height: 230,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -174,17 +174,16 @@ ipcMain.on('set-opacity', (_event, v) => {
   }
 });
 
-// 窗口自适应大小（展开/收起弹窗时调用）
+// 窗口自适应大小（展开菜单/设置时调用）
 ipcMain.on('resize-window', (_event, expanded) => {
   if (!win) return;
   try {
     if (expanded) {
-      win.setSize(440, 620);   // 展开状态：容纳 400×580 的 #app + 边距
+      win.setSize(340, 440);   // 展开状态：容纳顶部小人物 + 下方面板
     } else {
-      win.setSize(280, 360);   // 收起状态：容纳 260×340 的 #app + 边距
+      win.setSize(170, 230);   // 收起状态：仅人物
     }
     // 调整后重新检查边界
-    const { screen } = require('electron');
     const display = screen.getPrimaryDisplay().workArea;
     const [wx, wy] = win.getPosition();
     const [ww, wh] = win.getSize();
@@ -194,6 +193,35 @@ ipcMain.on('resize-window', (_event, expanded) => {
     win.setPosition(Math.round(nx), Math.round(ny));
   } catch (e) {}
 });
+
+// ===== 全局鼠标追踪（眼神跟随） + 窗口拖拽 =====
+let dragOffset = null;
+function startMouseLoop() {
+  setInterval(() => {
+    if (!win) return;
+    const p = screen.getCursorScreenPoint();
+    const [wx, wy] = win.getPosition();
+    const [ww, wh] = win.getSize();
+    // 人物眼睛中心（窗口内比例，居中偏上）
+    const ex = wx + ww * 0.5;
+    const ey = wy + wh * 0.44;
+    const dx = p.x - ex, dy = p.y - ey;
+    const d = Math.hypot(dx, dy) || 1;
+    win.webContents.send('mouse-look', dx / d, dy / d, p.x, p.y);
+    // 拖拽中：按鼠标位移移动窗口
+    if (dragOffset) {
+      win.setPosition(Math.round(p.x - dragOffset.x), Math.round(p.y - dragOffset.y));
+    }
+  }, 40);
+}
+ipcMain.on('drag-start', () => {
+  if (!win) return;
+  const p = screen.getCursorScreenPoint();
+  const [wx, wy] = win.getPosition();
+  dragOffset = { x: p.x - wx, y: p.y - wy };
+});
+ipcMain.on('drag-end', () => { dragOffset = null; });
+
 
 ipcMain.handle('get-auto-start', () => {
   return !!config.autoStart;
@@ -215,6 +243,7 @@ app.whenReady().then(() => {
   }
   applyAutoStart();
   createWindow();
+  startMouseLoop();
   setupAutoUpdate();
 });
 
