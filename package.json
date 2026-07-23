@@ -1,7 +1,7 @@
 {
   "name": "xiaoke-desktop-pet",
-  "version": "6.0.0",
-  "description": "小柯桌面萌宠 v6 - 纯人物陪伴型桌面宠物：透明无背景、眼神随鼠标、按时间与待机进行情感交互",
+  "version": "6.1.0",
+  "description": "小柯桌面萌宠 v6.1 - 透明无背景的柯南Q版陪伴萌宠：保留全部玩法(摸摸/喂食/打工/商店/装扮/任务/案件/分享/设置/等级金币)，新增眼神随鼠标、按时间与待机进行情感交互",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

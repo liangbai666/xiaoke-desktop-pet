@@ -16,8 +16,8 @@ let pendingUpdateVersion = null; // 有更新待安装时记录版本号
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 170,
-    height: 230,
+    width: 280,
+    height: 360,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -35,7 +35,6 @@ function createWindow() {
 
   // 确保窗口在屏幕可见区域内（防止上次关闭时位置跑偏导致只显示一半）
   try {
-    const { screen } = require('electron');
     const display = screen.getPrimaryDisplay().workArea;
     const [wx, wy] = win.getPosition();
     const [ww, wh] = win.getSize();
@@ -132,6 +131,24 @@ function setupAutoUpdate() {
   autoUpdater.checkForUpdates().catch(() => {});
 }
 
+// 眼神跟随：每 40ms 读取全局鼠标位置，计算相对人物眼睛的归一化方向并发送给渲染进程
+function startMouseLook() {
+  if (!win) return;
+  setInterval(() => {
+    if (!win || isHidden) return;
+    try {
+      const p = screen.getCursorScreenPoint();
+      const [wx, wy] = win.getPosition();
+      const [ww, wh] = win.getSize();
+      const eyeX = wx + ww * 0.5;
+      const eyeY = wy + wh * 0.40;
+      const nx = Math.max(-1, Math.min(1, (p.x - eyeX) / 320));
+      const ny = Math.max(-1, Math.min(1, (p.y - eyeY) / 320));
+      win.webContents.send('mouse-look', { nx, ny });
+    } catch (e) {}
+  }, 40);
+}
+
 function showFromTray() {
   if (win && isHidden) {
     isHidden = false;
@@ -174,14 +191,14 @@ ipcMain.on('set-opacity', (_event, v) => {
   }
 });
 
-// 窗口自适应大小（展开菜单/设置时调用）
+// 窗口自适应大小（展开/收起弹窗时调用）
 ipcMain.on('resize-window', (_event, expanded) => {
   if (!win) return;
   try {
     if (expanded) {
-      win.setSize(340, 440);   // 展开状态：容纳顶部小人物 + 下方面板
+      win.setSize(440, 620);   // 展开状态：容纳 400×580 的 #app + 边距
     } else {
-      win.setSize(170, 230);   // 收起状态：仅人物
+      win.setSize(280, 360);   // 收起状态：容纳 260×340 的 #app + 边距
     }
     // 调整后重新检查边界
     const display = screen.getPrimaryDisplay().workArea;
@@ -193,35 +210,6 @@ ipcMain.on('resize-window', (_event, expanded) => {
     win.setPosition(Math.round(nx), Math.round(ny));
   } catch (e) {}
 });
-
-// ===== 全局鼠标追踪（眼神跟随） + 窗口拖拽 =====
-let dragOffset = null;
-function startMouseLoop() {
-  setInterval(() => {
-    if (!win) return;
-    const p = screen.getCursorScreenPoint();
-    const [wx, wy] = win.getPosition();
-    const [ww, wh] = win.getSize();
-    // 人物眼睛中心（窗口内比例，居中偏上）
-    const ex = wx + ww * 0.5;
-    const ey = wy + wh * 0.44;
-    const dx = p.x - ex, dy = p.y - ey;
-    const d = Math.hypot(dx, dy) || 1;
-    win.webContents.send('mouse-look', dx / d, dy / d, p.x, p.y);
-    // 拖拽中：按鼠标位移移动窗口
-    if (dragOffset) {
-      win.setPosition(Math.round(p.x - dragOffset.x), Math.round(p.y - dragOffset.y));
-    }
-  }, 40);
-}
-ipcMain.on('drag-start', () => {
-  if (!win) return;
-  const p = screen.getCursorScreenPoint();
-  const [wx, wy] = win.getPosition();
-  dragOffset = { x: p.x - wx, y: p.y - wy };
-});
-ipcMain.on('drag-end', () => { dragOffset = null; });
-
 
 ipcMain.handle('get-auto-start', () => {
   return !!config.autoStart;
@@ -243,8 +231,8 @@ app.whenReady().then(() => {
   }
   applyAutoStart();
   createWindow();
-  startMouseLoop();
   setupAutoUpdate();
+  startMouseLook();
 });
 
 app.on('window-all-closed', () => {
